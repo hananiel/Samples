@@ -1,11 +1,11 @@
----
+﻿---
 applications:
 - name: auth-client-console-sample
   buildpacks:
   - binary_buildpack
   command: cmd /c .\Steeltoe.Samples.AuthConsole
   health-check-type: process
-  memory: 128M
+  memory: 256M
   no-route: true
   stack: windows
   env:

@@ -1,4 +1,4 @@
----
+﻿---
 applications:
 - name: auth-server-sample
   buildpacks:

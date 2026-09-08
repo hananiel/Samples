@@ -1,4 +1,4 @@
----
+﻿---
 applications:
 - name: auth-client-web-sample
   buildpacks:

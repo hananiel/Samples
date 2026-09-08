@@ -5,7 +5,7 @@ for connecting to a MongoDB database.
 
 ## General pre-requisites
 
-1. Installed .NET 8 SDK
+1. Installed .NET 10 SDK
 1. Optional: [Tanzu Platform for Cloud Foundry](https://techdocs.broadcom.com/us/en/vmware-tanzu/platform/tanzu-platform-for-cloud-foundry/10-0/tpcf/concepts-overview.html)
    (optionally with [Windows support](https://techdocs.broadcom.com/us/en/vmware-tanzu/platform/tanzu-platform-for-cloud-foundry/10-0/tpcf/toc-tasw-install-index.html))
    with [Tanzu Cloud Service Broker for Microsoft Azure](https://techdocs.broadcom.com/us/en/vmware-tanzu/platform-services/tanzu-cloud-service-broker-for-microsoft-azure/1-13/csb-azure/reference-azure-cosmosdb-mongo.html)
@@ -30,15 +30,24 @@ Upon startup, the app inserts a couple of objects into the bound MongoDB databas
    cf target -o your-org -s your-space
    cf marketplace
    cf marketplace -e your-offering
-   cf create-service csb-azure-mongodb your-plan sampleMongoDbService
+   cf create-service csb-azure-mongodb your-plan sampleMongoDbService --wait
    ```
-1. Wait for the service to become ready (you can check with `cf services`)
-1. Run the `cf push` command to deploy from source (you can monitor logs with `cf logs mongodb-connector-sample`)
-   - When deploying to Windows, binaries must be built locally before push. Use the following commands instead:
+1. Deploy the app
+
+   - **From Source:**
+
+     ```shell
+     cf push
+     ```
+
+   - **From Binaries** (required if deploying to Windows):
+
      ```shell
      dotnet publish -r win-x64 --self-contained
-     cf push -f manifest-windows.yml -p bin/Release/net8.0/win-x64/publish
+     cf push -f manifest-windows.yml -p bin/Release/net10.0/win-x64/publish
      ```
+
+   For either deployment option, monitor startup logs with: `cf logs mongodb-connector-sample`.
 1. Copy the value of `routes` in the output and open in your browser
 
 ## Running on Tanzu Platform for Kubernetes
@@ -67,7 +76,7 @@ tanzu app workload apply --local-path . --file ./config/workload.yaml -y
 Alternatively, from locally built binaries:
 ```shell
 dotnet publish -r linux-x64 --no-self-contained
-tanzu app workload apply --local-path ./bin/Release/net8.0/linux-x64/publish --file ./config/workload.yaml -y
+tanzu app workload apply --local-path ./bin/Release/net10.0/linux-x64/publish --file ./config/workload.yaml -y
 ```
 
 See the [Tanzu documentation](https://techdocs.broadcom.com/us/en/vmware-tanzu/standalone-components/tanzu-application-platform/1-12/tap/getting-started-deploy-first-app.html) for details.

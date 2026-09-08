@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Steeltoe.Configuration.CloudFoundry;
 using Steeltoe.Connectors.EntityFrameworkCore.MySql;
 using Steeltoe.Connectors.MySql;
@@ -26,8 +25,8 @@ bool useMultipleDatabases = builder.Configuration.GetValue("useMultipleDatabases
 if (useMultipleDatabases)
 {
     // Steeltoe: When using multiple databases, specify the service binding name.
-    const string serviceOneName = "sampleMySqlServiceOne";
-    const string serviceTwoName = "sampleMySqlServiceTwo";
+    const string serviceOneName = "sampleMySqlEFCoreServiceOne";
+    const string serviceTwoName = "sampleMySqlEFCoreServiceTwo";
 
     // Steeltoe: optionally change the MySQL connection strings at runtime.
     builder.Services.Configure<MySqlOptions>(serviceOneName, options => options.ConnectionString += ";Use Compression=false");
@@ -36,13 +35,13 @@ if (useMultipleDatabases)
     // Steeltoe: Setup DbContext connection strings, optionally changing MySQL options at runtime.
     builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) => options.UseMySql(serviceProvider, serviceOneName, null, untypedOptions =>
     {
-        var mySqlOptions = (MySqlDbContextOptionsBuilder)untypedOptions;
+        var mySqlOptions = (MySqlDbContextOptionsBuilderAlias)untypedOptions;
         mySqlOptions.CommandTimeout(20);
     }));
 
     builder.Services.AddDbContext<OtherDbContext>((serviceProvider, options) => options.UseMySql(serviceProvider, serviceTwoName, null, untypedOptions =>
     {
-        var mySqlOptions = (MySqlDbContextOptionsBuilder)untypedOptions;
+        var mySqlOptions = (MySqlDbContextOptionsBuilderAlias)untypedOptions;
         mySqlOptions.CommandTimeout(25);
     }));
 }
@@ -54,7 +53,7 @@ else
     // Steeltoe: Setup DbContext connection string, optionally changing MySQL options at runtime.
     builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) => options.UseMySql(serviceProvider, null, null, untypedOptions =>
     {
-        var mySqlOptions = (MySqlDbContextOptionsBuilder)untypedOptions;
+        var mySqlOptions = (MySqlDbContextOptionsBuilderAlias)untypedOptions;
         mySqlOptions.CommandTimeout(15);
     }));
 }
@@ -70,13 +69,14 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 
 app.UseRouting();
 
 app.UseAuthorization();
 
-app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
+app.MapStaticAssets();
+
+app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}").WithStaticAssets();
 
 // Steeltoe: Insert some rows into MySQL table.
 await MySqlSeeder.CreateSampleDataAsync(app.Services);

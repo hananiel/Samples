@@ -1,4 +1,4 @@
-﻿---
+---
 applications:
 - name: postgresql-efcore-connector-sample
   random-route: true
@@ -11,4 +11,4 @@ applications:
     DOTNET_CLI_TELEMETRY_OPTOUT: "true"
     DOTNET_NOLOGO: "true"
   services:
-   - samplePostgreSqlService
+   - samplePostgreSqlEFCoreService

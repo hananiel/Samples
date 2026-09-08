@@ -19,6 +19,9 @@ class LogObscurer(object):
     def error(self, message):
         self._logger.error(self._obscure_message(message))
 
+    def warning(self, message):
+        self._logger.warning(self._obscure_message(message))
+
     def nolog(self, message):
         return
 
@@ -55,7 +58,8 @@ def before_all(context):
     setup_options(context)
     setup_output(context)
     setup_platform(context)
-    context.counters = {'failed_scenarios': 0, 'failed_features': 0}
+    context.failed_scenarios = 0
+    context.failed_features = 0
 
 
 def after_all(context):
@@ -64,8 +68,8 @@ def after_all(context):
     :type context: behave.runner.Context
     """
     context.log.info("failures:")
-    context.log.info("    features : {}".format(context.counters['failed_features']))
-    context.log.info("    scenarios: {}".format(context.counters['failed_scenarios']))
+    context.log.info("    features : {}".format(getattr(context, "failed_features", 0)))
+    context.log.info("    scenarios: {}".format(getattr(context, "failed_scenarios", 0)))
 
 
 def before_feature(context, feature):
@@ -75,7 +79,7 @@ def before_feature(context, feature):
     :type feature: behave.model.Feature
     """
     context.log.info('[===] feature starting: "{}"'.format(feature.name))
-    context.project_dir = os.path.dirname(os.path.join(context.samples_dir, feature.filename))
+    context.project_dir = os.path.dirname(os.path.dirname(os.path.join(context.samples_dir, feature.filename)))
     context.log.info('project directory: {}'.format(context.project_dir))
 
 
@@ -86,7 +90,7 @@ def after_feature(context, feature):
     :type feature: behave.model.Feature
     """
     if feature.status == Status.failed:
-        context.counters['failed_features'] += 1
+        context.failed_features += 1
     context.log.info('[===] feature completed: "{}" [{}]'.format(feature.name, feature.status))
 
 
@@ -115,9 +119,14 @@ def after_scenario(context, scenario):
     :type scenario: behave.model.Scenario
     """
     if scenario.status == Status.failed:
-        context.counters['failed_scenarios'] += 1
+        context.failed_scenarios += 1
     if context.options.do_cleanup:
         context.log.info('cleaning up test scenario')
+        # Teardown matching scaffolds
+        tags = scenario.tags + scenario.feature.tags
+        for teardown in list(filter(lambda t: t.endswith('_scaffold'), tags)):
+            teardown_scaffold(context, scenario, teardown)
+        # Call any registered cleanup callbacks
         if hasattr(context, 'cleanups'):
             cleanups = list(context.cleanups)
             while cleanups:
@@ -160,7 +169,7 @@ def setup_options(context):
     user_opts = os.path.join(context.samples_dir, "user.ini")
     if os.path.exists(user_opts):
         import configparser
-        parser = configparser.SafeConfigParser()
+        parser = configparser.ConfigParser()
         parser.read(user_opts)
         section = context.config.userdata.get("config_section", "behave.userdata")
         if parser.has_section(section):
@@ -171,38 +180,36 @@ def setup_options(context):
     context.options = type("", (), {})()
     context.options.output_dir = context.config.userdata.get('output')
     context.log.info("option: output directory -> {}".format(context.options.output_dir))
+    user_data = context.config.userdata
     try:
-        context.options.use_windowed = context.config.userdata.getbool('windowed')
+        context.options.use_windowed = user_data.getbool('windowed')
     except ValueError as e:
-        context.log.error("invalid config option: windowed -> {}".format(context.config.userdata.get('windowed')))
+        context.log.error("invalid config option: windowed -> {}".format(user_data.get('windowed')))
         raise e
     context.log.info("option: windowed? -> {}".format(context.options.use_windowed))
     try:
-        context.options.do_cleanup = context.config.userdata.getbool('cleanup')
+        context.options.do_cleanup = user_data.getbool('cleanup')
     except ValueError as e:
-        context.log.error("invalid config option: cleanup -> {}".format(context.config.userdata.get('cleanup')))
+        context.log.error("invalid config option: cleanup -> {}".format(user_data.get('cleanup')))
         raise e
     context.log.info("option: cleanup? -> {}".format(context.options.do_cleanup))
     try:
-        context.options.debug_on_error = context.config.userdata.getbool('debug_on_error')
+        context.options.debug_on_error = user_data.getbool('debug_on_error')
     except ValueError as e:
-        context.log.error("invalid config option: debug_on_error -> {}".format(
-            context.config.userdata.get('debug_on_error')))
+        context.log.error("invalid config option: debug_on_error -> {}".format(user_data.get('debug_on_error')))
         raise e
     context.log.info("option: debug on error? -> {}".format(context.options.debug_on_error))
     context.options.cmd = type("", (), {})()
     try:
-        context.options.cmd.max_attempts = context.config.userdata.getint('cmd_max_attempts')
+        context.options.cmd.max_attempts = user_data.getint('cmd_max_attempts')
     except ValueError as e:
-        context.log.error("invalid config option: cmd_max_attempts -> {}".format(
-            context.config.userdata.get('cmd_max_attempts')))
+        context.log.error("invalid config option: cmd_max_attempts -> {}".format(user_data.get('cmd_max_attempts')))
         raise e
     context.log.info("option: cmd max attempts -> {}".format(context.options.cmd.max_attempts))
     try:
-        context.options.cmd.loop_wait = context.config.userdata.getint('cmd_loop_wait')
+        context.options.cmd.loop_wait = user_data.getint('cmd_loop_wait')
     except ValueError as e:
-        context.log.error(
-            "invalid config option: cmd_loop_wait -> {}".format(context.config.userdata.get('cmd_loop_wait')))
+        context.log.error("invalid config option: cmd_loop_wait -> {}".format(user_data.get('cmd_loop_wait')))
         raise e
     context.log.info("option: cmd loop wait -> {}".format(context.options.cmd.loop_wait))
     context.options.cf = type("", (), {})()
@@ -219,10 +226,9 @@ def setup_options(context):
     context.options.cf.space = context.config.userdata.get('cf_space')
     context.log.info("option: CloudFoundry space -> {}".format(context.options.cf.space))
     try:
-        context.options.cf.max_attempts = context.config.userdata.getint('cf_max_attempts')
+        context.options.cf.max_attempts = user_data.getint('cf_max_attempts')
     except ValueError as e:
-        context.log.error(
-            "invalid config option: cf_max_attempts -> {}".format(context.config.userdata.get('cf_max_attempts')))
+        context.log.error("invalid config option: cf_max_attempts -> {}".format(user_data.get('cf_max_attempts')))
         raise e
     context.log.info("option: CloudFoundry max attempts -> {}".format(context.options.cf.max_attempts))
 
@@ -286,3 +292,25 @@ def setup_scaffold(context, scenario, scaffold):
         sample_scaffold_module.setup(context)
     finally:
         sys.path.pop()
+
+def teardown_scaffold(context, scenario, scaffold):
+    """
+    scenario scaffolding teardown
+    :type context: behave.runner.Context
+    :type scenario: behave.model.Scenario
+    :type scaffold: str
+    """
+    target, _ = scaffold.rsplit('_', -1)
+
+    # sample teardown
+    sys.path.append(os.path.join(context.samples_dir, os.path.dirname(context.feature.filename)))
+    try:
+        sample_scaffold_module = importlib.import_module('scaffold.{}'.format(target))
+        importlib.reload(sample_scaffold_module)
+        sample_scaffold_module.teardown(context)
+    finally:
+        sys.path.pop()
+
+    # general teardown
+    scaffold_model = importlib.import_module('pysteel.scaffold.{}'.format(target))
+    scaffold_model.teardown(context, scenario)

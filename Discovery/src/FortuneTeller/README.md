@@ -11,7 +11,7 @@ switching to `http` or `https` and replacing `fortuneService` with the real host
 
 ## General pre-requisites
 
-1. Installed .NET 8 SDK
+1. Installed .NET 10 SDK
 1. Optional: [Tanzu Platform for Cloud Foundry](https://techdocs.broadcom.com/us/en/vmware-tanzu/platform/tanzu-platform-for-cloud-foundry/10-0/tpcf/concepts-overview.html)
    (optionally with [Windows support](https://techdocs.broadcom.com/us/en/vmware-tanzu/platform/tanzu-platform-for-cloud-foundry/10-0/tpcf/toc-tasw-install-index.html))
    with [Spring Cloud Services for Cloud Foundry](https://techdocs.broadcom.com/us/en/vmware-tanzu/spring/spring-cloud-services-for-cloud-foundry/3-3/scs-tanzu/index.html)
@@ -136,15 +136,24 @@ This variant uses service instances that are registered in [Spring Cloud Eureka]
    cf target -o your-org -s your-space
    cf marketplace
    cf marketplace -e your-offering
-   cf create-service p.service-registry your-plan sampleDiscoveryService
+   cf create-service p.service-registry your-plan sampleDiscoveryService --wait
    ```
-1. Wait for the service to become ready (you can check with `cf services`)
-1. Run the `cf push` command from the FortuneTellerApi directory, wait until it has started, then run it from the FortuneTellerWeb directory
-   - When deploying to Windows, binaries must be built locally before push. Use the following commands instead:
+1. Deploy the apps. Follow these steps from the FortuneTellerApi directory first. Once that app has started, repeat these steps from the FortuneTellerWeb directory
+
+   * **From Source:**
+
+     ```shell
+     cf push
+     ```
+
+   * **From Binaries** (required if deploying to Windows):
+
      ```shell
      dotnet publish -r win-x64 --self-contained
-     cf push -f manifest-windows.yml -p bin/Release/net8.0/win-x64/publish
+     cf push -f manifest-windows.yml -p bin/Release/net10.0/win-x64/publish
      ```
+
+   For either deployment option, monitor startup logs with: `cf logs [app-name]` (where "[app-name]" is either `fortune-service-sample` or `fortune-web-sample`).
 
 ### Running on Tanzu Platform for Cloud Foundry (Container-to-Container)
 
@@ -211,7 +220,7 @@ with Eureka at startup. FortuneTellerApi is configured to obtain the URL to Conf
 
 ### Running locally
 
-1. Start a Eureka [docker container](https://github.com/SteeltoeOSS/Samples/blob/main/CommonTasks.md) (pick the one for discovery-first)
+1. Start a Eureka [docker container](https://github.com/SteeltoeOSS/Samples/blob/main/CommonTasks.md) (pick the one for discovery-first, but omit the `-e eureka.instance.hostname=localhost` switch)
 1. Start a Config Server [docker container](https://github.com/SteeltoeOSS/Samples/blob/main/CommonTasks.md)
 1. Start FortuneTellerApi with the **Eureka** launch profile
    ```shell

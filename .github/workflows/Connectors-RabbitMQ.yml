@@ -1,0 +1,53 @@
+name: "Connectors: RabbitMQ"
+
+on:
+  workflow_dispatch:
+    inputs:
+      linux_integration_environment:
+        description: GitHub Environment name for integration tests running on linux.
+        required: false
+        type: string
+      windows_integration_environment:
+        description: GitHub Environment name for integration tests running on Windows.
+        required: false
+        type: string
+  push:
+    branches:
+    - main
+    - '[0-9]+.x'
+  pull_request:
+    paths:
+    - .gitattributes
+    - .gitignore
+    - behave*
+    - nuget.config
+    - Pipfile*
+    - pyenv.pkgs
+    - environment.py
+    - pysteel/**
+    - steps/**
+    - Connectors/src/RabbitMQ/**
+    - .github/workflows/rabbitmq.yml
+    - .github/workflows/shared-test-workflow.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.inputs.linux_integration_environment || vars.LINUX_INTEGRATION_ENVIRONMENT }}-${{ github.event.inputs.windows_integration_environment || vars.WINDOWS_INTEGRATION_ENVIRONMENT }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    uses: ./.github/workflows/shared-test-workflow.yml
+    secrets: inherit
+    with:
+      feature: Connectors
+      sample: RabbitMQ
+      OS: linux
+      environment_name: ${{ github.event.inputs.linux_integration_environment || vars.LINUX_INTEGRATION_ENVIRONMENT }}
+  windows:
+    uses: ./.github/workflows/shared-test-workflow.yml
+    secrets: inherit
+    with:
+      feature: Connectors
+      sample: RabbitMQ
+      OS: windows
+      environment_name: ${{ github.event.inputs.windows_integration_environment || vars.WINDOWS_INTEGRATION_ENVIRONMENT }}

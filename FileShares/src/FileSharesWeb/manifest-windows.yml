@@ -1,4 +1,4 @@
----
+﻿---
 applications:
 - name: fileshares-sample
   random-route: true
